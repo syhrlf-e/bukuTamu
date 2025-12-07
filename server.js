@@ -29,7 +29,13 @@ app.get('/api/health', (req, res) => {
 //     }
 // });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`Press Ctrl+C to stop.`);
-});
+// Export the app for Vercel (serverless)
+module.exports = app;
+
+// Only listen if run directly (local development)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`Press Ctrl+C to stop.`);
+    });
+}
