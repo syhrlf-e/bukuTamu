@@ -40,7 +40,15 @@ app.get('/api/debug-fs', (req, res) => {
 // Use process.cwd() for Vercel/Serverless environment compatibility
 const clientBuildPath = path.join(process.cwd(), 'client/dist');
 console.log('Serving static files from:', clientBuildPath);
-app.use(express.static(clientBuildPath));
+
+app.use(express.static(clientBuildPath, {
+    maxAge: '1y', // Cache hashed assets
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+    }
+}));
 
 // In-memory store for scan status (Note: Ephemeral on serverless/Vercel)
 const scanStatus = new Map();
@@ -68,22 +76,6 @@ app.get('/api/scan/:id', (req, res) => {
 });
 
 // API Endpoint for random merchandise (optional health check)
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date() });
-});
-
-// Handle SPA routing: serve index.html for any unknown routes
-// app.get('*', (req, res) => {
-//     const indexPath = path.join(clientBuildPath, 'index.html');
-//     if (fs.existsSync(indexPath)) {
-//         res.sendFile(indexPath);
-//     } else {
-//         res.status(404).send('Not found');
-//     }
-// });
-
-// Export the app for Vercel (serverless)
-module.exports = app;
 
 // Only listen if run directly (local development)
 if (require.main === module) {
