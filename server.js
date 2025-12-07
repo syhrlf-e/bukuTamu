@@ -9,6 +9,33 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// DEBUG: Endpoint to inspect Vercel file system
+app.get('/api/debug-fs', (req, res) => {
+    const fs = require('fs');
+    
+    const listDir = (dir) => {
+        try {
+            return fs.readdirSync(dir).map(f => {
+                const fullPath = path.join(dir, f);
+                try {
+                    return fs.statSync(fullPath).isDirectory() 
+                        ? { name: f, children: listDir(fullPath) } 
+                        : f;
+                } catch { return f; }
+            });
+        } catch (e) {
+            return e.message;
+        }
+    };
+
+    res.json({
+        cwd: process.cwd(),
+        dirname: __dirname,
+        rootDir: listDir(process.cwd()),
+        clientDist: listDir(path.join(process.cwd(), 'client')),
+    });
+});
+
 // Serve static files from the Vue client build directory
 // Use process.cwd() for Vercel/Serverless environment compatibility
 const clientBuildPath = path.join(process.cwd(), 'client/dist');
