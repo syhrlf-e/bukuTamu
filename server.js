@@ -10,7 +10,8 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from the Vue client build directory
-const clientBuildPath = path.resolve(__dirname, 'client/dist');
+// Use process.cwd() for Vercel/Serverless environment compatibility
+const clientBuildPath = path.join(process.cwd(), 'client/dist');
 console.log('Serving static files from:', clientBuildPath);
 app.use(express.static(clientBuildPath));
 
