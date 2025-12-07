@@ -1,10 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import QRCode from 'qrcode';
+import { useRouter } from 'vue-router';
 
 const guestName = ref('');
 const merchandise = ref('');
 const qrCodeUrl = ref('');
+const showModal = ref(false);
+const pollingInterval = ref(null);
+const uniqueId = Math.random().toString(36).substring(2, 15);
 
 const merchandiseList = [
     'Sendok Cantik',
@@ -22,21 +26,28 @@ const generateRandomMerchandise = () => {
     return merchandiseList[randomIndex];
 };
 
-const revealed = ref(false);
-const showModal = ref(false);
-
-const openModal = () => {
-    showModal.value = true;
+const checkScanStatus = async () => {
+    try {
+        const response = await fetch(`/api/check-scan/${uniqueId}`);
+        const data = await response.json();
+        if (data.scanned) {
+            showModal.value = true;
+            if (pollingInterval.value) clearInterval(pollingInterval.value);
+        }
+    } catch (error) {
+        console.error('Polling error:', error);
+    }
 };
-
 
 onMounted(async () => {
     guestName.value = localStorage.getItem('guestName') || 'Tamu Undangan';
     merchandise.value = generateRandomMerchandise();
     
-    // QR Code contains the merchandise name
+    // QR Code now points to the server endpoint
+    const scanUrl = `${window.location.origin}/api/scan/${uniqueId}`;
+    
     try {
-        qrCodeUrl.value = await QRCode.toDataURL(merchandise.value, {
+        qrCodeUrl.value = await QRCode.toDataURL(scanUrl, {
             color: {
                 dark: '#000000', // Black
                 light: '#ffffff' // White
@@ -44,9 +55,17 @@ onMounted(async () => {
             width: 200,
             margin: 2
         });
+        
+        // Start polling
+        pollingInterval.value = setInterval(checkScanStatus, 2000);
+        
     } catch (err) {
         console.error(err);
     }
+});
+
+onUnmounted(() => {
+    if (pollingInterval.value) clearInterval(pollingInterval.value);
 });
 </script>
 
@@ -64,19 +83,14 @@ onMounted(async () => {
             <p class="text-gray-600 mb-8 font-light text-lg">Hadirin yang terhormat, <span class="font-semibold text-indigo-700">{{ guestName }}</span></p>
 
             <div class="bg-gray-50 rounded-xl p-6 mb-6 border border-gray-100 flex flex-col items-center">
-                <p class="text-sm text-gray-500 mb-4">Scan QR Code ini untuk mengambil souvenir:</p>
+                <p class="text-sm text-gray-500 mb-4">Scan QR Code ini untuk melihat souvenir Anda:</p>
                 <div class="flex justify-center mb-4 min-h-[200px] items-center bg-white p-2 rounded-lg shadow-sm">
                     <img v-if="qrCodeUrl" :src="qrCodeUrl" alt="Merchandise QR Code" class="rounded-lg" />
                     <div v-else class="text-gray-300 animate-pulse">Generating QR...</div>
                 </div>
                 
                 <div class="mt-4 text-center">
-                    <button 
-                        @click="openModal" 
-                        class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-full shadow-md transition-transform transform hover:scale-105"
-                    >
-                        Lihat Isi Souvenir
-                    </button>
+                   <p class="text-xs text-gray-400 italic">Silakan scan QR Code di atas menggunakan kamera HP Anda</p>
                 </div>
             </div>
             
